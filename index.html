@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>麻將紀錄器</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="麻將紀錄器">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2f3f7">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&display=swap">
+<style>
+/* Layout: single phone column — header, month stats, calendar of pill cells, bottom-sheet editors.
+   Five skins swap the token set on <body data-skin>; "simple" also follows light/dark. */
+:root{
+  --f-serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --f-sans:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+body{
+  /* simple (default, light) */
+  --bg:#f2f3f7; --on-bg:#1c1d22; --on-bg-muted:#8a8d99;
+  --surface:#ffffff; --surface-2:#f2f3f7; --line:#e3e5ec; --cal:#ffffff;
+  --ink:#1c1d22; --muted:#8a8d99;
+  --accent:#2f6fe4; --accent-ink:#ffffff; --accent-soft:#e6eefc;
+  --win:#1e9e5a; --win-soft:#e5f5ec; --loss:#e0384c; --loss-soft:#fde8eb; --net:#1c1d22;
+  --shadow:0 2px 10px rgba(20,30,60,.06);
+  --f-display:var(--f-sans); --display-weight:800;
+  --radius-card:18px; --radius-day:12px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body[data-skin="simple"]{
+  --bg:#111215; --on-bg:#f1f2f6; --on-bg-muted:#8d909c;
+  --surface:#1c1d22; --surface-2:#25262d; --line:#2e3038; --cal:#1c1d22;
+  --ink:#f1f2f6; --muted:#8d909c; --accent:#5b8ff0; --accent-ink:#0d1220; --accent-soft:#1f2a44;
+  --win:#43c983; --win-soft:#16301f; --loss:#ff6577; --loss-soft:#3a1b21; --net:#f1f2f6;
+  --shadow:none; color-scheme:dark }}
+:root[data-theme="dark"] body[data-skin="simple"]{
+  --bg:#111215; --on-bg:#f1f2f6; --on-bg-muted:#8d909c;
+  --surface:#1c1d22; --surface-2:#25262d; --line:#2e3038; --cal:#1c1d22;
+  --ink:#f1f2f6; --muted:#8d909c; --accent:#5b8ff0; --accent-ink:#0d1220; --accent-soft:#1f2a44;
+  --win:#43c983; --win-soft:#16301f; --loss:#ff6577; --loss-soft:#3a1b21; --net:#f1f2f6;
+  --shadow:none; color-scheme:dark }
+
+body[data-skin="felt"]{
+  --bg:#0f4a35; --on-bg:#f6f0de; --on-bg-muted:#9fc6b0;
+  --surface:#f6f0de; --surface-2:#ece4cc; --line:#d9cfae; --cal:#0b3c2a;
+  --ink:#23302a; --muted:#7b7a63;
+  --accent:#e6c26a; --accent-ink:#1f2a22; --accent-soft:#f3e6bf;
+  --win:#16804a; --win-soft:#dcefdc; --loss:#bf3226; --loss-soft:#f6dcd2; --net:#9a6f14;
+  --shadow:0 4px 0 #c9bd95, 0 8px 16px rgba(0,0,0,.28);
+  --f-display:var(--f-serif); --display-weight:900;
+  --radius-card:14px; --radius-day:10px; color-scheme:light;
+}
+body[data-skin="lucky"]{
+  --bg:#b01e28; --on-bg:#ffe3a3; --on-bg-muted:#f6c48a;
+  --surface:#fff7e6; --surface-2:#fcebc8; --line:#f0d6a2; --cal:#fff7e6;
+  --ink:#5a1a14; --muted:#a06e52;
+  --accent:#f2c14e; --accent-ink:#6b1410; --accent-soft:#fdeec4;
+  --win:#d0202f; --win-soft:#fde0df; --loss:#22804a; --loss-soft:#def1e4; --net:#a46b10;
+  --shadow:0 6px 16px rgba(80,0,0,.25);
+  --f-display:var(--f-serif); --display-weight:900;
+  --radius-card:20px; --radius-day:14px; color-scheme:light;
+}
+body[data-skin="night"]{
+  --bg:#0b0c13; --on-bg:#eceefa; --on-bg-muted:#7b80a2;
+  --surface:#151724; --surface-2:#1c1f30; --line:#282c44; --cal:#11131e;
+  --ink:#eceefa; --muted:#7b80a2;
+  --accent:#8f7cff; --accent-ink:#0b0c13; --accent-soft:#251f4a;
+  --win:#36eda0; --win-soft:#0f2b22; --loss:#ff4f7d; --loss-soft:#33141f; --net:#53d6ff;
+  --shadow:0 0 0 1px #232741;
+  --f-display:var(--f-sans); --display-weight:800;
+  --radius-card:16px; --radius-day:10px; color-scheme:dark;
+}
+body[data-skin="wuxia"]{
+  --bg:#eaf1fb; --on-bg:#3563e3; --on-bg-muted:#7b8aa6;
+  --surface:#ffffff; --surface-2:#f4f7fc; --line:#dbe4f2; --cal:#ffffff;
+  --ink:#1f2a44; --muted:#7b8aa6;
+  --accent:#3563e3; --accent-ink:#ffffff; --accent-soft:#e3ebff;
+  --win:#1f9a5c; --win-soft:#e3f6ec; --loss:#d8364b; --loss-soft:#fde7ea; --net:#2a8bb0;
+  --shadow:0 6px 18px rgba(40,70,140,.08);
+  --f-display:var(--f-serif); --display-weight:900;
+  --radius-card:24px; --radius-day:16px; color-scheme:light;
+}
+
+body[data-skin="cute"]{
+  --bg:#fff0f4; --on-bg:#e0598b; --on-bg-muted:#c48aa0;
+  --surface:#ffffff; --surface-2:#fff6f9; --line:#ffd6e3; --cal:#ffffff;
+  --ink:#6a4155; --muted:#b5899b;
+  --accent:#ff7aa8; --accent-ink:#ffffff; --accent-soft:#ffe3ee;
+  --win:#27a873; --win-soft:#dcf7ea; --loss:#ef5a74; --loss-soft:#ffe1e6; --net:#8f6fd6;
+  --shadow:0 5px 0 #ffd6e3;
+  --f-display:var(--f-sans); --display-weight:900;
+  --radius-card:28px; --radius-day:20px; color-scheme:light;
+}
+
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--bg)}
+body{margin:0;font-size:14px}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-sans);-webkit-tap-highlight-color:transparent;transition:background .25s}
+.wrap{max-width:520px;margin:0 auto;padding-block:16px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px}
+header{position:relative;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;padding:8px 44px 0}
+h1{font-family:var(--f-display);font-weight:var(--display-weight);font-size:clamp(26px,8vw,34px);margin:0;color:var(--on-bg);letter-spacing:.02em;text-wrap:balance;overflow-wrap:anywhere}
+.sub{color:var(--on-bg-muted);font-weight:700;letter-spacing:.12em;font-size:14px;overflow-wrap:anywhere}
+.gear{position:absolute;right:0;top:4px;width:40px;height:40px;border-radius:50%;font-size:20px;color:var(--on-bg);background:color-mix(in srgb,var(--on-bg) 10%,transparent)}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--on-bg-muted);border:1px solid color-mix(in srgb,var(--on-bg) 18%,transparent);border-radius:99px;padding:3px 10px}
+.install{font-size:13px;line-height:1.5;font-weight:700;color:#7a4a00;background:#fff1cc;border-radius:12px;padding:8px 12px;max-width:340px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--on-bg-muted)}
+.sync.ok .dot{background:#2ec474} .sync.warn .dot{background:#e0a422}
+
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border-radius:99px;padding:12px 10px;font-weight:800;font-size:16px;letter-spacing:.04em}
+.btn-ghost{background:transparent;color:var(--on-bg);border:2px solid color-mix(in srgb,var(--on-bg) 55%,transparent)}
+.sheet .btn-ghost{color:var(--accent);border-color:var(--accent)}
+body[data-skin="felt"] .sheet .btn-ghost,body[data-skin="lucky"] .sheet .btn-ghost{color:var(--ink);border-color:var(--accent)}
+.btn-solid{background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 35%,transparent)}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--surface);border-radius:var(--radius-card);padding:14px 10px 12px;text-align:center;box-shadow:var(--shadow);border-bottom:4px solid var(--c)}
+.stat .k{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.1em}
+.stat .v{font-size:clamp(22px,7vw,30px);font-weight:800;color:var(--c);font-variant-numeric:tabular-nums;margin-top:4px;overflow-wrap:anywhere}
+body[data-skin="simple"] .stat,body[data-skin="night"] .stat{border-bottom:0}
+body[data-skin="felt"] .stat{border:1px solid var(--line);border-top:5px solid var(--c);margin-bottom:4px}
+body[data-skin="lucky"] .stat{border:2px solid var(--accent)}
+body[data-skin="cute"] .stat{border:2px dashed var(--c);margin-bottom:5px}
+body[data-skin="cute"] .day{border-style:dashed}
+body[data-skin="cute"] h1::before{content:"♡ "} body[data-skin="cute"] h1::after{content:" ♡"}
+body[data-skin="night"] .stat .v{text-shadow:0 0 14px color-mix(in srgb,var(--c) 55%,transparent)}
+.stats-cap{font-size:12px;color:var(--on-bg-muted);text-align:center;margin-top:-4px}
+
+.month{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:var(--radius-card);padding:6px;box-shadow:var(--shadow)}
+.month h2{margin:0;font-size:20px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.nav{width:44px;height:44px;border-radius:50%;font-size:24px;color:var(--ink);font-weight:800}
+.nav:active{background:var(--accent-soft)}
+
+.cal{background:var(--cal);border-radius:calc(var(--radius-card) + 4px);padding:14px 8px;box-shadow:var(--shadow)}
+body[data-skin="felt"] .cal{box-shadow:inset 0 2px 10px rgba(0,0,0,.35)}
+.wk,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.wk div{text-align:center;font-size:13px;color:var(--muted);font-weight:700;padding-bottom:8px}
+body[data-skin="felt"] .wk div{color:var(--on-bg-muted)}
+.wk div:first-child,.wk div:last-child{color:var(--loss)}
+.day{min-height:66px;border-radius:var(--radius-day);border:1.5px solid var(--line);background:var(--surface);padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;font-variant-numeric:tabular-nums;transition:transform .1s}
+body[data-skin="felt"] .day{border-color:transparent;box-shadow:0 3px 0 #c9bd95}
+.day .n{font-size:14px;color:var(--muted);font-weight:700}
+.day .amt{font-size:11px;font-weight:800;line-height:1.1;word-break:break-all;text-align:center}
+.day .h{font-size:10px;color:var(--muted)}
+.day.today{border-color:var(--accent);border-width:2px}
+.day.today .n{color:var(--ink)}
+.day.w{background:var(--win-soft);border-color:transparent} .day.w .amt{color:var(--win)}
+.day.l{background:var(--loss-soft);border-color:transparent} .day.l .amt{color:var(--loss)}
+.day.e{background:var(--surface-2)}
+.day.today.w,.day.today.l,.day.today.e{border-color:var(--accent)}
+.day:active{transform:scale(.95)}
+.blank{min-height:66px}
+.hint{font-size:12px;color:var(--on-bg-muted);text-align:center;line-height:1.6;margin:0}
+
+/* sheets */
+.veil{position:fixed;inset:0;background:rgba(10,15,30,.5);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheet{background:var(--surface);color:var(--ink);width:100%;max-width:520px;max-height:90%;overflow:auto;border-radius:26px 26px 0 0;border-top:5px solid var(--accent);
+  padding:20px max(20px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;gap:14px;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}body{transition:none}}
+.sheet h3{margin:0;text-align:center;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.label{font-size:14px;color:var(--muted);font-weight:700}
+.field input{font:inherit;font-size:19px;padding:13px 16px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);font-variant-numeric:tabular-nums;width:100%}
+.preview{text-align:center;font-weight:800;font-size:15px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-text{color:var(--muted);font-weight:700;padding:10px}
+.btn-danger{color:var(--loss);font-weight:700;padding:10px}
+.confirm{background:var(--loss-soft);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;text-align:center}
+
+.hist-y{display:flex;align-items:center;justify-content:space-between}
+.hist-y .nav{color:var(--ink)}
+.yearsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.yearsum div{background:var(--surface-2);border-radius:14px;padding:10px 4px}
+.yearsum small{display:block;font-size:12px;color:var(--muted);font-weight:700}
+.yearsum b{font-size:16px;font-variant-numeric:tabular-nums}
+.mgroup h4{margin:8px 0 6px;font-size:14px;color:var(--muted);display:flex;justify-content:space-between}
+.rec{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-radius:14px;background:var(--surface-2);width:100%;text-align:left;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.rec .d{font-weight:700} .rec .s{font-size:12px;color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:20px 0}
+.pos{color:var(--win)} .neg{color:var(--loss)}
+.note{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+.msg{font-size:14px;text-align:center;font-weight:700;min-height:1.2em}
+textarea{width:100%;min-height:120px;font:12px ui-monospace,monospace;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);padding:10px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:99px;font-weight:700;font-size:14px;z-index:20}
+
+/* skin picker */
+.skins{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.skin{border-radius:16px;padding:10px;border:2px solid var(--line);display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--surface)}
+.skin[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sw{height:54px;border-radius:10px;padding:8px;display:flex;gap:6px;align-items:flex-end}
+.sw i{flex:1;height:22px;border-radius:5px;display:block}
+.sw i:first-child{height:30px}
+.skin b{font-size:15px}
+.skin small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+</style>
+</head>
+<body data-skin="simple">
+<div class="wrap">
+  <header>
+    <button class="gear" id="btnSet" type="button" aria-label="設定">⚙︎</button>
+    <h1 id="hTitle">麻將紀錄器</h1>
+    <div class="sub" id="hSub"></div>
+    <div class="install" id="install" hidden>請用 Safari「分享 → 加入主畫面」，從桌面圖示開啟，資料才不會被 Safari 清掉。</div>
+    <div class="sync" id="sync"><span class="dot"></span><span id="syncText">載入中…</span></div>
+  </header>
+
+  <div class="actions">
+    <button class="btn btn-ghost" id="btnHist" type="button"></button>
+    <button class="btn btn-solid" id="btnBackup" type="button"></button>
+  </div>
+
+  <section class="stats" aria-label="本月統計">
+    <div class="stat" style="--c:var(--win)"><div class="k" id="kWin"></div><div class="v" id="sWin">$0</div></div>
+    <div class="stat" style="--c:var(--loss)"><div class="k" id="kLoss"></div><div class="v" id="sLoss">$0</div></div>
+    <div class="stat" style="--c:var(--net)"><div class="k" id="kNet"></div><div class="v" id="sNet">+$0</div></div>
+    <div class="stat" style="--c:var(--accent)"><div class="k" id="kHands"></div><div class="v" id="sHands">0</div></div>
+  </section>
+  <div class="stats-cap" id="statsCap"></div>
+
+  <div class="month">
+    <button class="nav" id="prev" type="button" aria-label="上個月">‹</button>
+    <h2 id="mTitle"></h2>
+    <button class="nav" id="next" type="button" aria-label="下個月">›</button>
+  </div>
+
+  <section class="cal">
+    <div class="wk"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <p class="hint">點日期就能記錄，寫入後自動存檔。右上角 ⚙︎ 可以改標題和風格。</p>
+</div>
+
+<div class="veil" id="veil" hidden></div>
+
+<script>
+(() => {
+  const SKINS = {
+    simple:{ name:"簡約清爽", desc:"乾淨白底，用詞直白", sw:["#f2f3f7","#ffffff","#2f6fe4","#1e9e5a"],
+      sub:"記下每一場輸贏", win:"贏", loss:"輸", net:"淨輸贏", hands:"將數",
+      hist:"📋 歷史紀錄", backup:"💾 備份", save:"儲存", fHands:"將數", fWin:"贏了多少", fLoss:"輸了多少", ok:"已儲存", yr:"年度紀錄" },
+    felt:{ name:"麻將桌綠", desc:"綠絨桌面、象牙牌卡", sw:["#0f4a35","#f6f0de","#e6c26a","#bf3226"],
+      sub:"一將一將，牌譜留底", win:"胡牌進帳", loss:"放槍失血", net:"本月結算", hands:"開打將數",
+      hist:"🀄 牌譜回顧", backup:"💾 備份", save:"記上一筆", fHands:"開打將數", fWin:"胡牌進帳", fLoss:"放槍失血", ok:"已記上一筆", yr:"年度牌譜" },
+    lucky:{ name:"招財喜氣", desc:"紅金配色，紅賺綠賠", sw:["#b01e28","#fff7e6","#f2c14e","#22804a"],
+      sub:"天天進財，把把自摸", win:"進財", loss:"破財", net:"財運結算", hands:"開桌將數",
+      hist:"📒 財運帳本", backup:"🧧 備份", save:"入帳", fHands:"開桌將數", fWin:"進財", fLoss:"破財", ok:"已入帳", yr:"年度財運" },
+    night:{ name:"深夜牌局", desc:"深色霓虹，晚上不刺眼", sw:["#0b0c13","#151724","#8f7cff","#36eda0"],
+      sub:"夜深了，再一將", win:"贏面", loss:"輸面", net:"淨戰績", hands:"總將數",
+      hist:"🌙 歷史戰績", backup:"💾 備份", save:"記錄", fHands:"將數", fWin:"贏面", fLoss:"輸面", ok:"已記錄", yr:"年度戰績" },
+    wuxia:{ name:"武俠風雲", desc:"原本的風雲錄風格", sw:["#eaf1fb","#ffffff","#3563e3","#d8364b"],
+      sub:"雀林爭霸，誰與爭鋒", win:"凱旋贏金", loss:"敗北折損", net:"江湖淨損益", hands:"交手將數",
+      hist:"📜 翻閱舊卷", backup:"🗄️ 備份秘笈", save:"寫入風雲錄", fHands:"交手將數", fWin:"大捷贏金", fLoss:"慘遭掠奪", ok:"已寫入風雲錄", yr:"舊卷" },
+    cute:{ name:"可愛粉嫩", desc:"馬卡龍粉色，用詞俏皮", sw:["#fff0f4","#ffffff","#ff7aa8","#8f6fd6"],
+      sub:"今天也要胡好胡滿 ✿", win:"贏到開心", loss:"輸到哭哭", net:"我的小金庫", hands:"打了幾將",
+      hist:"🐣 回憶小本本", backup:"🧸 備份", save:"記下來！", fHands:"打了幾將", fWin:"贏到開心 (≧▽≦)", fLoss:"輸到哭哭 (｡•́︿•̀｡)", ok:"記好囉～", yr:"回憶小本本" }
+  };
+  const LS = "mjrec.records.v1", LSS = "mjrec.settings.v1";
+  const $ = id => document.getElementById(id);
+  const DEFAULT_SET = {title:"", subtitle:"", skin:"simple"};
+  let records = {}, settings = {...DEFAULT_SET};
+  let view = new Date(); view.setDate(1);
+  let col = null;
+
+  // ---------- storage ----------
+  const readLS = (k, d) => { try{ return JSON.parse(localStorage.getItem(k)) || d; }catch(e){ return d; } };
+  const writeLS = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+  records = readLS(LS, null) || readLS("mjfyl.records.v1", {});
+  settings = {...DEFAULT_SET, ...readLS(LSS, {})};
+  if(!SKINS[settings.skin]) settings.skin = "simple";
+
+  function setSync(state, text){ $("sync").className = "sync " + state; $("syncText").textContent = text; }
+
+  function storageOK(){
+    try{ localStorage.setItem("mjrec.test","1"); localStorage.removeItem("mjrec.test"); return true; }catch(e){ return false; }
+  }
+  function lastBackupText(){
+    const b = readLS("mjrec.lastBackup", 0);
+    if(!b) return "尚未備份過";
+    const d = Math.floor((Date.now() - b) / 86400000);
+    return d === 0 ? "今天備份過" : `${d} 天前備份`;
+  }
+  function refreshStatus(){
+    if(!storageOK()){ setSync("warn", "無法存檔：請關閉無痕模式"); return; }
+    const n = Object.keys(records).length;
+    const b = readLS("mjrec.lastBackup", 0);
+    const stale = n > 0 && (!b || Date.now() - b > 30*86400000);
+    setSync(stale ? "warn" : "ok", `已自動存在這台手機・${lastBackupText()}`);
+  }
+
+  async function putRecord(key, rec){
+    if(rec) records[key] = rec; else delete records[key];
+    writeLS(LS, records); render(); refreshStatus();
+  }
+  async function saveSettings(){
+    settings.updatedAt = Date.now();
+    writeLS(LSS, settings);
+  }
+
+  // ---------- helpers ----------
+  const S = () => SKINS[settings.skin];
+  const pad = n => String(n).padStart(2,"0");
+  const keyOf = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+  const money = n => "$" + Math.abs(n).toLocaleString("en-US");
+  const signed = n => (n>=0?"+":"−") + money(n);
+  const net = r => (r.win||0) - (r.loss||0);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  function compact(n){
+    const a = Math.abs(n), s = n>0?"+":n<0?"−":"";
+    if(a >= 10000) return s + (a/10000).toFixed(a%10000?1:0) + "萬";
+    return s + a.toLocaleString("en-US");
+  }
+  function sumOf(keys){
+    return keys.reduce((t,k)=>{ const r=records[k]; t.win+=r.win||0; t.loss+=r.loss||0; t.hands+=r.hands||0; return t; },{win:0,loss:0,hands:0});
+  }
+  function toast(t){
+    const el = document.createElement("div"); el.className="toast"; el.textContent=t;
+    document.body.appendChild(el); setTimeout(()=>el.remove(), 1800);
+  }
+
+  // ---------- skin + header ----------
+  function applySkin(){
+    const s = S();
+    document.body.dataset.skin = settings.skin;
+    const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim();
+    document.documentElement.style.background = bg;
+    const tc = document.querySelector('meta[name="theme-color"]'); if(tc) tc.content = bg;
+    $("hTitle").textContent = settings.title.trim() || "麻將紀錄器";
+    $("hSub").textContent = settings.subtitle.trim() || s.sub;
+    $("btnHist").textContent = s.hist; $("btnBackup").textContent = s.backup;
+    $("kWin").textContent = s.win; $("kLoss").textContent = s.loss;
+    $("kNet").textContent = s.net; $("kHands").textContent = s.hands;
+    render();
+  }
+
+  // ---------- main render ----------
+  function render(){
+    const y = view.getFullYear(), m = view.getMonth();
+    $("mTitle").textContent = `${y}年 ${m+1}月`;
+    const prefix = `${y}-${pad(m+1)}-`;
+    const s = sumOf(Object.keys(records).filter(k=>k.startsWith(prefix)));
+    $("sWin").textContent = money(s.win);
+    $("sLoss").textContent = money(s.loss);
+    $("sNet").textContent = signed(s.win - s.loss);
+    $("sHands").textContent = s.hands.toLocaleString("en-US");
+    $("statsCap").textContent = `以上為 ${m+1} 月統計`;
+
+    const grid = $("grid"); grid.innerHTML = "";
+    const startDow = new Date(y,m,1).getDay(), days = new Date(y,m+1,0).getDate();
+    const t = new Date(), todayKey = keyOf(t.getFullYear(), t.getMonth(), t.getDate());
+    for(let i=0;i<startDow;i++){ const b=document.createElement("div"); b.className="blank"; grid.appendChild(b); }
+    for(let d=1; d<=days; d++){
+      const k = keyOf(y,m,d), r = records[k];
+      const btn = document.createElement("button"); btn.type="button"; btn.className="day";
+      if(k===todayKey) btn.classList.add("today");
+      let label = `${m+1}月${d}日`;
+      const n = document.createElement("span"); n.className="n"; n.textContent=d; btn.appendChild(n);
+      if(r){
+        const v = net(r);
+        btn.classList.add(v>0?"w":v<0?"l":"e");
+        const a = document.createElement("span"); a.className="amt"; a.textContent = v===0?"±0":compact(v); btn.appendChild(a);
+        if(r.hands){ const h=document.createElement("span"); h.className="h"; h.textContent=r.hands+"將"; btn.appendChild(h); }
+        label += `，${v>=0?"贏":"輸"} ${Math.abs(v)}`;
+      }
+      btn.setAttribute("aria-label", label);
+      btn.onclick = () => openEditor(k);
+      grid.appendChild(btn);
+    }
+  }
+
+  // ---------- sheets ----------
+  const veil = $("veil");
+  function openSheet(html){
+    veil.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+    veil.hidden = false;
+    return veil.firstElementChild;
+  }
+  function closeSheet(){ veil.hidden = true; veil.innerHTML = ""; }
+  veil.addEventListener("click", e => { if(e.target === veil) closeSheet(); });
+  document.addEventListener("keydown", e => { if(e.key==="Escape" && !veil.hidden) closeSheet(); });
+
+  function openEditor(k){
+    const s = S(), r = records[k] || {};
+    const sh = openSheet(`
+      <h3>${k}</h3>
+      <div class="field"><label for="fHands">${s.fHands}</label><input id="fHands" type="number" inputmode="numeric" min="0" placeholder="0" value="${r.hands||""}"></div>
+      <div class="field"><label for="fWin">${s.fWin}</label><input id="fWin" type="number" inputmode="numeric" min="0" placeholder="0" value="${r.win||""}"></div>
+      <div class="field"><label for="fLoss">${s.fLoss}</label><input id="fLoss" type="number" inputmode="numeric" min="0" placeholder="0" value="${r.loss||""}"></div>
+      <div class="preview" id="pv"></div>
+      <button class="btn btn-solid" id="fSave" type="button">${s.save}</button>
+      <div class="row2">
+        <button class="btn-text" id="fCancel" type="button">取消</button>
+        ${records[k] ? '<button class="btn-danger" id="fDel" type="button">刪除這天</button>' : '<span></span>'}
+      </div>
+      <div id="delBox"></div>`);
+    const num = id => Math.max(0, Math.round(Number(sh.querySelector("#"+id).value) || 0));
+    const upd = () => { const v = num("fWin") - num("fLoss"); const pv = sh.querySelector("#pv");
+      pv.textContent = `當日淨額 ${signed(v)}`; pv.className = "preview " + (v>0?"pos":v<0?"neg":""); };
+    sh.querySelectorAll("input").forEach(i => i.addEventListener("input", upd)); upd();
+    sh.querySelector("#fCancel").onclick = closeSheet;
+    sh.querySelector("#fSave").onclick = async () => {
+      const rec = {hands:num("fHands"), win:num("fWin"), loss:num("fLoss"), updatedAt:Date.now()};
+      closeSheet();
+      if(!rec.hands && !rec.win && !rec.loss){ if(records[k]) await putRecord(k, null); return; }
+      await putRecord(k, rec); toast(s.ok);
+    };
+    const del = sh.querySelector("#fDel");
+    if(del) del.onclick = () => {
+      sh.querySelector("#delBox").innerHTML = `<div class="confirm"><b>確定刪除 ${k} 的紀錄？</b>
+        <div class="row2"><button class="btn-text" id="dNo" type="button">保留</button><button class="btn-danger" id="dYes" type="button">刪除</button></div></div>`;
+      sh.querySelector("#dNo").onclick = () => sh.querySelector("#delBox").innerHTML = "";
+      sh.querySelector("#dYes").onclick = async () => { closeSheet(); await putRecord(k, null); toast("已刪除"); };
+    };
+  }
+
+  function openHistory(year){
+    year = year || view.getFullYear();
+    const keys = Object.keys(records).filter(k=>k.startsWith(year+"-")).sort().reverse();
+    const ys = sumOf(keys), yn = ys.win - ys.loss;
+    const byMonth = {};
+    keys.forEach(k => (byMonth[k.slice(0,7)] ||= []).push(k));
+    let list = "";
+    Object.keys(byMonth).sort().reverse().forEach(mk => {
+      const ms = sumOf(byMonth[mk]), mn = ms.win - ms.loss;
+      list += `<div class="mgroup"><h4><span>${Number(mk.slice(5))}月</span><span class="${mn>=0?"pos":"neg"}">${signed(mn)}</span></h4>`;
+      byMonth[mk].forEach(k => { const r = records[k], v = net(r);
+        list += `<button class="rec" type="button" data-k="${k}"><span><span class="d">${k.slice(5).replace("-","/")}</span><br><span class="s">${r.hands||0} 將・贏 ${money(r.win||0)}・輸 ${money(r.loss||0)}</span></span><b class="${v>=0?"pos":"neg"}">${signed(v)}</b></button>`; });
+      list += `</div>`;
+    });
+    const sh = openSheet(`
+      <div class="hist-y"><button class="nav" id="hyPrev" type="button" aria-label="前一年">‹</button><h3>${year} ${S().yr}</h3><button class="nav" id="hyNext" type="button" aria-label="下一年">›</button></div>
+      <div class="yearsum">
+        <div><small>全年淨額</small><b class="${yn>=0?"pos":"neg"}">${signed(yn)}</b></div>
+        <div><small>打牌天數</small><b>${keys.length}</b></div>
+        <div><small>總將數</small><b>${ys.hands}</b></div>
+      </div>
+      ${list || '<div class="empty">這一年還沒有紀錄</div>'}
+      <button class="btn-text" id="hClose" type="button">關閉</button>`);
+    sh.querySelector("#hyPrev").onclick = () => openHistory(year-1);
+    sh.querySelector("#hyNext").onclick = () => openHistory(year+1);
+    sh.querySelector("#hClose").onclick = closeSheet;
+    sh.querySelectorAll(".rec").forEach(b => b.onclick = () => {
+      const k = b.dataset.k; view = new Date(+k.slice(0,4), +k.slice(5,7)-1, 1); render(); openEditor(k);
+    });
+  }
+
+  function openSettings(){
+    const skinBtns = Object.entries(SKINS).map(([id, s]) => `
+      <button class="skin" type="button" data-skin="${id}" aria-pressed="${id===settings.skin}">
+        <span class="sw" style="background:${s.sw[0]}"><i style="background:${s.sw[1]}"></i><i style="background:${s.sw[2]}"></i><i style="background:${s.sw[3]}"></i></span>
+        <span><b>${s.name}</b><small>${s.desc}</small></span>
+      </button>`).join("");
+    const sh = openSheet(`
+      <h3>設定</h3>
+      <div class="field"><label for="sTitle">大標題</label><input id="sTitle" type="text" maxlength="24" placeholder="麻將紀錄器" value="${esc(settings.title)}"></div>
+      <div class="field"><label for="sSub">副標題</label><input id="sSub" type="text" maxlength="30" placeholder="${esc(S().sub)}" value="${esc(settings.subtitle)}"></div>
+      <span class="label">風格</span>
+      <div class="skins">${skinBtns}</div>
+      <p class="note">標題留空會顯示預設文字。換風格只改外觀和用詞，紀錄不受影響。</p>
+      <button class="btn btn-solid" id="sDone" type="button">完成</button>`);
+    const tIn = sh.querySelector("#sTitle"), sIn = sh.querySelector("#sSub");
+    const live = () => { settings.title = tIn.value; settings.subtitle = sIn.value; applySkin(); };
+    tIn.addEventListener("input", live); sIn.addEventListener("input", live);
+    sh.querySelectorAll(".skin").forEach(b => b.onclick = () => {
+      settings.skin = b.dataset.skin;
+      sh.querySelectorAll(".skin").forEach(x => x.setAttribute("aria-pressed", x===b));
+      sIn.placeholder = S().sub;
+      applySkin();
+    });
+    sh.querySelector("#sDone").onclick = async () => { closeSheet(); await saveSettings(); toast("設定已儲存"); };
+  }
+
+  function openBackup(){
+    const count = Object.keys(records).length;
+    const sh = openSheet(`
+      <h3>備份</h3>
+      <p class="note">每筆紀錄都會自動存在這台手機。建議每個月匯出一次備份檔，存到「檔案」App 的 iCloud 雲碟。刪除桌面圖示或換手機前，一定要先備份。${lastBackupText()}。匯入也支援舊版風雲錄存下來的 .html 檔，同一天的紀錄會以匯入的為準。目前共 ${count} 天紀錄。</p>
+      <button class="btn btn-solid" id="bExp" type="button">匯出備份檔</button>
+      <button class="btn btn-ghost" id="bImpBtn" type="button">從備份檔匯入</button>
+      <input id="bFile" type="file" accept=".json,.html,.htm,application/json,text/html" hidden>
+      <div class="msg" id="bMsg"></div>
+      <div id="bAlt"></div>
+      <button class="btn-text" id="bClose" type="button">關閉</button>`);
+    const msg = t => sh.querySelector("#bMsg").textContent = t;
+    sh.querySelector("#bClose").onclick = closeSheet;
+    sh.querySelector("#bExp").onclick = async () => {
+      const t = new Date();
+      const data = JSON.stringify({app:"麻將紀錄器", version:2, exportedAt:t.toISOString(), settings, records}, null, 2);
+      const filename = `麻將紀錄器備份-${t.getFullYear()}${pad(t.getMonth()+1)}${pad(t.getDate())}.json`;
+      const markDone = () => { writeLS("mjrec.lastBackup", Date.now()); refreshStatus(); };
+      // 1) iPhone 分享選單：可選「儲存到檔案」或用 LINE 傳給自己
+      try{
+        const file = new File([data], filename, {type:"application/json"});
+        if(navigator.canShare && navigator.canShare({files:[file]})){
+          await navigator.share({files:[file], title:filename});
+          markDone(); msg("備份完成"); return;
+        }
+      }catch(e){ if(e && e.name === "AbortError"){ msg("已取消"); return; } }
+      // 2) 直接下載
+      try{
+        const url = URL.createObjectURL(new Blob([data], {type:"application/json"}));
+        const a = document.createElement("a"); a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        markDone(); msg("備份檔已下載，可在「檔案」App 的下載項目找到");
+      }catch(e){ msg("沒有存下備份檔，可以改用下方複製"); }
+      sh.querySelector("#bAlt").innerHTML = `<div class="field"><label for="bText">複製這段內容貼到備忘錄保存</label><textarea id="bText" readonly></textarea></div><button class="btn btn-ghost" id="bCopy" type="button">複製備份內容</button>`;
+      const ta = sh.querySelector("#bText"); ta.value = data;
+      sh.querySelector("#bCopy").onclick = async () => {
+        try{ await navigator.clipboard.writeText(data); msg("已複製"); }catch(e){ ta.focus(); ta.select(); msg("已選取，請長按複製"); }
+      };
+    };
+    sh.querySelector("#bImpBtn").onclick = () => sh.querySelector("#bFile").click();
+    sh.querySelector("#bFile").onchange = e => {
+      const f = e.target.files[0]; if(!f) return;
+      const rd = new FileReader();
+      rd.onload = async () => {
+        try{
+          const text = String(rd.result);
+          let obj;
+          const old = text.match(/window\.MAHJONG_DATA\s*=\s*(\{[\s\S]*?\});/);
+          if(old) obj = JSON.parse(old[1]);          // 舊版風雲錄 .html 檔
+          else obj = JSON.parse(text);               // 本工具的 .json 備份檔
+          const recs = obj.records || obj;
+          const keys = Object.keys(recs).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
+          if(!keys.length) throw 0;
+          msg(`匯入中… 共 ${keys.length} 天`);
+          for(const k of keys){
+            const r = recs[k] || {};
+            const rec = {hands:Math.max(0, Math.round(+(r.hands ?? r.rounds) || 0)), win:Math.max(0, Math.round(+r.win || 0)), loss:Math.max(0, Math.round(+r.loss || 0)), updatedAt:Date.now()};
+            if(rec.hands || rec.win || rec.loss) await putRecord(k, rec);
+          }
+          if(obj.settings && SKINS[obj.settings.skin]){ settings = {...DEFAULT_SET, ...obj.settings}; applySkin(); await saveSettings(); }
+          msg(`已匯入 ${keys.length} 天紀錄`);
+        }catch(err){ msg("讀不到紀錄，請選麻將紀錄器的備份檔或舊版風雲錄 .html 檔"); }
+      };
+      rd.readAsText(f);
+    };
+  }
+
+  $("prev").onclick = () => { view.setMonth(view.getMonth()-1); render(); };
+  $("next").onclick = () => { view.setMonth(view.getMonth()+1); render(); };
+  $("btnHist").onclick = () => openHistory();
+  $("btnBackup").onclick = openBackup;
+  $("btnSet").onclick = openSettings;
+
+  applySkin();
+  refreshStatus();
+  const standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  if(!standalone) $("install").hidden = false;
+  try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+  if("serviceWorker" in navigator){ window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+})();
+</script>
+</body>
+</html>
